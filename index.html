@@ -3,152 +3,170 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BRAIN IDOL: LABYRINTH WALKER</title>
+    <title>BRAIN IDOL: THE DARK VOID</title>
     <style>
         :root {
             --neon-blue: #00f2ff;
             --neon-pink: #ff2e63;
-            --bg-dark: #020205;
-            --grid-bg: #0a0a15;
-            --wall-color: #394481;
+            --bg-dark: #010103;
+            --grid-bg: #000;
+            --wall-color: #1a237e; /* 基礎牆壁顏色 */
         }
         body {
             background-color: var(--bg-dark);
             color: white;
-            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            font-family: 'Segoe UI', Roboto, sans-serif;
             display: flex;
             flex-direction: column;
             align-items: center;
             margin: 0;
-            overflow-x: hidden;
+            overflow: hidden; /* 防止滾動條干擾 */
         }
-        /* 比賽看板風格 */
         .header {
             width: 100%;
-            padding: 20px;
-            background: linear-gradient(180deg, #111 0%, transparent 100%);
+            padding: 15px;
             text-align: center;
-            border-bottom: 1px solid #333;
+            border-bottom: 1px solid #222;
+            background: rgba(0,0,0,0.8);
+            z-index: 100;
         }
         #timer {
-            font-size: 60px;
+            font-size: 50px;
             font-weight: 800;
             color: var(--neon-blue);
-            text-shadow: 0 0 20px var(--neon-blue);
+            text-shadow: 0 0 15px var(--neon-blue);
             font-family: 'Courier New', monospace;
         }
-        /* 迷宮容器 */
+        
+        /* 迷宮容器 - 優化外觀 */
         .maze-container {
             position: relative;
-            margin: 20px;
-            padding: 10px;
-            border: 2px solid #333;
+            margin: 30px;
+            padding: 5px; /* 給外圍霓虹預留空間 */
             background: var(--grid-bg);
-            box-shadow: 0 0 50px rgba(0,0,0,1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 0 20px rgba(0, 242, 255, 0.1); /* 整體淡霓虹 */
         }
         .maze-grid {
             display: grid;
-            gap: 0;
-            transition: all 0.5s ease;
+            gap: 0; /* 關鍵：確保方塊之間無縫隙 */
+            background: #000;
         }
         .cell {
             position: relative;
-            box-sizing: border-box;
-            background: rgba(255,255,255,0.02);
-            transition: background 0.3s;
+            box-sizing: border-box; /* 關鍵：邊框包含在寬高內 */
+            background: rgba(255,255,255,0.01);
+            /* 預設邊框，確保交界點方形完整 */
+            border: 0px solid transparent; 
         }
-        /* 牆壁樣式 - 更有立體感 */
-        .w-n { border-top: 4px solid var(--wall-color); box-shadow: inset 0 5px 5px -5px var(--neon-blue); }
-        .w-s { border-bottom: 4px solid var(--wall-color); }
-        .w-w { border-left: 4px solid var(--wall-color); }
-        .w-e { border-right: 4px solid var(--wall-color); }
+        
+        /* 新版無縫、均勻霓虹牆壁 */
+        .w-n { 
+            border-top: 4px solid var(--wall-color); 
+            box-shadow: inset 0 6px 10px -4px var(--neon-blue); 
+        }
+        .w-s { 
+            border-bottom: 4px solid var(--wall-color); 
+            box-shadow: inset 0 -6px 10px -4px var(--neon-blue); 
+        }
+        .w-w { 
+            border-left: 4px solid var(--wall-color); 
+            box-shadow: inset 6px 0 10px -4px var(--neon-blue); 
+        }
+        .w-e { 
+            border-right: 4px solid var(--wall-color); 
+            box-shadow: inset -6px 0 10px -4px var(--neon-blue); 
+        }
 
-        /* 探索面板 - 科技感 */
+        /* 探索感應器 */
         #local-panel {
             display: none;
-            width: 320px;
-            background: #0d0d1a;
-            border: 2px solid var(--neon-blue);
+            width: 300px;
+            background: #05050a;
+            border: 1px solid var(--neon-blue);
             padding: 20px;
-            border-radius: 10px;
+            border-radius: 8px;
             text-align: center;
-            box-shadow: 0 0 30px rgba(0, 242, 255, 0.2);
+            box-shadow: 0 0 15px rgba(0, 242, 255, 0.2);
         }
         .sensor-display {
             display: grid;
             grid-template-areas: ". up ." "left mid right" ". down .";
-            gap: 10px;
+            gap: 15px;
             justify-content: center;
             margin: 20px 0;
         }
         .sensor {
-            width: 60px;
-            height: 60px;
-            border: 1px solid #333;
+            width: 55px;
+            height: 55px;
+            border: 1px solid #222;
             display: flex;
             align-items: center;
             justify-content: center;
             font-weight: bold;
             border-radius: 4px;
-            transition: all 0.2s;
-            color: #444;
+            color: #333;
+            transition: all 0.15s ease;
         }
         .sensor.active {
             background: var(--neon-blue);
             color: #000;
-            box-shadow: 0 0 15px var(--neon-blue);
+            box-shadow: 0 0 20px var(--neon-blue);
             border: none;
         }
-        .key-hint { font-size: 10px; margin-top: 5px; color: #888; }
 
-        /* 按鈕與交互 */
+        /* 按鈕視覺 */
         button {
             background: transparent;
             border: 1px solid var(--neon-blue);
             color: var(--neon-blue);
             padding: 10px 25px;
-            font-size: 16px;
+            font-size: 15px;
             cursor: pointer;
-            transition: 0.3s;
             text-transform: uppercase;
             letter-spacing: 2px;
+            transition: 0.2s;
         }
         button:hover {
-            background: var(--neon-blue);
-            color: black;
-            box-shadow: 0 0 20px var(--neon-blue);
+            background: rgba(0, 242, 255, 0.1);
+            box-shadow: 0 0 15px var(--neon-blue);
         }
-        .draw-wall {
-            position: absolute;
-            z-index: 5;
-            transition: 0.1s;
-        }
-        .draw-wall:hover { background: rgba(255, 46, 99, 0.3); }
-        .wall-active { background: var(--neon-pink) !important; box-shadow: 0 0 10px var(--neon-pink); }
-        
-        .difficulty-select { margin: 10px; }
-        select { background: #111; color: white; border: 1px solid var(--neon-blue); padding: 5px; }
 
-        #msg { height: 30px; margin: 15px; color: var(--neon-pink); font-weight: bold; }
+        /* 作答區牆壁互動 */
+        .draw-wall { 
+            position: absolute; 
+            z-index: 10; 
+            background: rgba(255,255,255,0.03); 
+        }
+        .draw-wall:hover { background: rgba(255, 46, 99, 0.2); }
+        .wall-active { 
+            background: var(--neon-pink) !important; 
+            box-shadow: 0 0 15px var(--neon-pink); 
+        }
+        
+        #msg { height: 35px; margin: 15px; font-size: 18px; color: white; font-weight: bold; }
+        .hidden { display: none !important; }
     </style>
 </head>
 <body>
 
 <div class="header">
     <div id="timer">00:00.00</div>
-    <div class="difficulty-select">
-        難度選擇：
-        <select id="size-select" onchange="resetGame()">
-            <option value="5">5x5 (初級)</option>
-            <option value="7">7x7 (中級)</option>
-            <option value="10">10x10 (最強大腦)</option>
+    <div style="margin-top:5px; font-size:12px; color:#666;">
+        難度：
+        <select id="size-select" style="background:#000; color:white; border:1px solid var(--neon-blue);">
+            <option value="5">5x5</option>
+            <option value="7">7x7</option>
+            <option value="10">10x10</option>
         </select>
     </div>
 </div>
 
-<div id="msg">【模式：全局觀測】</div>
+<div id="msg">【模式：無盡黑暗】點擊按鈕，開始黑暗探索</div>
 
-<div id="maze-display-container" class="maze-container">
+<div id="maze-display-container" class="maze-container hidden">
     <div id="maze-grid" class="maze-grid"></div>
 </div>
 
@@ -156,7 +174,7 @@
     <div class="sensor-display">
         <div id="s-n" class="sensor" style="grid-area: up;">W</div>
         <div id="s-w" class="sensor" style="grid-area: left;">A</div>
-        <div id="s-mid" class="sensor" style="grid-area: mid; border: none; font-size: 24px;">👤</div>
+        <div id="s-mid" class="sensor" style="grid-area: mid; border: none; font-size: 20px;">👤</div>
         <div id="s-e" class="sensor" style="grid-area: right;">D</div>
         <div id="s-s" class="sensor" style="grid-area: down;">S</div>
     </div>
@@ -164,8 +182,9 @@
 </div>
 
 <div id="controls">
-    <button id="start-btn" onclick="enterMaze()">開始挑戰</button>
-    <button id="submit-btn" class="hidden" onclick="validate()">提交答案</button>
+    <button id="start-btn" onclick="startVoidExploration()">開始盲走探索</button>
+    <button id="submit-btn" class="hidden" onclick="validate()">提交地圖</button>
+    <button onclick="location.reload()" style="border-color:#444; color:#444">刷新地圖</button>
 </div>
 
 <script>
@@ -173,24 +192,10 @@
     let maze = [];
     let player = {x: 0, y: 0};
     let startTime, timerInterval;
-    let isDrawingMode = false;
 
-    function resetGame() {
+    // 1. DFS 算法生成全連通迷宮 (數據不重複，保證連通)
+    function initMazeData() {
         SIZE = parseInt(document.getElementById('size-select').value);
-        clearInterval(timerInterval);
-        document.getElementById('timer').innerText = "00:00.00";
-        document.getElementById('start-btn').classList.remove('hidden');
-        document.getElementById('submit-btn').classList.add('hidden');
-        document.getElementById('local-panel').style.display = 'none';
-        document.getElementById('maze-display-container').style.display = 'block';
-        document.getElementById('msg').innerText = "【模式：全局觀測】";
-        player = {x: 0, y: 0};
-        isDrawingMode = false;
-        initMaze();
-    }
-
-    function initMaze() {
-        // DFS 生成全連通迷宮
         maze = Array(SIZE).fill().map(() => Array(SIZE).fill().map(() => ({N:true, S:true, W:true, E:true, v:false})));
         let stack = [[0,0]];
         maze[0][0].v = true;
@@ -209,10 +214,20 @@
                 stack.push([nx, ny]);
             } else stack.pop();
         }
-        render('view');
     }
 
-    function render(mode) {
+    // 2. 開始黑暗探索：移除了觀察按鈕，直接隱藏地圖進入 WASD 模式
+    function startVoidExploration() {
+        document.getElementById('start-btn').classList.add('hidden');
+        document.getElementById('local-panel').style.display = 'block';
+        document.getElementById('msg').innerText = "探索中... 完全依靠感應器！";
+        startTime = Date.now();
+        timerInterval = setInterval(updateTimer, 30);
+        updateSensors();
+    }
+
+    // 3. 渲染邏輯 - 優化 CSS 以實現無縫接合
+    function renderMaze(mode) {
         const grid = document.getElementById('maze-grid');
         grid.style.gridTemplateColumns = `repeat(${SIZE}, 60px)`;
         grid.innerHTML = '';
@@ -220,27 +235,24 @@
             for(let x=0; x<SIZE; x++) {
                 const cell = document.createElement('div');
                 cell.className = 'cell';
-                cell.style.width = '60px';
-                cell.style.height = '60px';
+                cell.style.width = '60px'; cell.style.height = '60px';
+                
                 if(mode === 'view') {
+                    // 最終答案顯示（驗證用）
                     if(maze[y][x].N) cell.classList.add('w-n');
                     if(maze[y][x].S) cell.classList.add('w-s');
                     if(maze[y][x].W) cell.classList.add('w-w');
                     if(maze[y][x].E) cell.classList.add('w-e');
-                    if(x === 0 && y === 0) cell.innerHTML = "🚩";
-                } else {
-                    // 繪圖模式牆壁
-                    const configs = [
-                        {d:'N', s:{top:0, left:0, width:'100%', height:'8px'}},
-                        {d:'S', s:{bottom:0, left:0, width:'100%', height:'8px'}},
-                        {d:'W', s:{top:0, left:0, width:'8px', height:'100%'}},
-                        {d:'E', s:{top:0, right:0, width:'8px', height:'100%'}}
-                    ];
-                    configs.forEach(c => {
+                } else if(mode === 'draw') {
+                    // 作答模式
+                    ['N','S','W','E'].forEach(d => {
                         const w = document.createElement('div');
                         w.className = 'draw-wall';
-                        Object.assign(w.style, c.s);
-                        w.id = `w-${x}-${y}-${c.d}`;
+                        w.id = `w-${x}-${y}-${d}`;
+                        // 調整作答牆壁熱區，使其與 CSS 邊框位置精確對齊
+                        const hS = '12px'; // 熱區寬度
+                        if(d==='N'||d==='S') { w.style.width='100%'; w.style.height=hS; d==='N'?w.style.top=0:w.style.bottom=0; }
+                        else { w.style.height='100%'; w.style.width=hS; d==='W'?w.style.left=0:w.style.right=0; }
                         w.onclick = () => w.classList.toggle('wall-active');
                         cell.appendChild(w);
                     });
@@ -250,16 +262,7 @@
         }
     }
 
-    function enterMaze() {
-        document.getElementById('maze-display-container').style.display = 'none';
-        document.getElementById('start-btn').classList.add('hidden');
-        document.getElementById('local-panel').style.display = 'block';
-        document.getElementById('msg').innerText = "探索中... 使用 WASD 移動";
-        startTime = Date.now();
-        timerInterval = setInterval(updateTimer, 30);
-        updateSensors();
-    }
-
+    // 遊戲流程
     function updateTimer() {
         const diff = Date.now() - startTime;
         const m = Math.floor(diff/60000).toString().padStart(2,'0');
@@ -270,22 +273,20 @@
 
     function updateSensors() {
         const w = maze[player.y][player.x];
-        const setSensor = (id, hasPath) => {
+        const setS = (id, hasPath) => {
             const el = document.getElementById(id);
             if(hasPath) el.classList.add('active');
             else el.classList.remove('active');
         };
-        setSensor('s-n', !w.N); setSensor('s-s', !w.S);
-        setSensor('s-w', !w.W); setSensor('s-e', !w.E);
+        setS('s-n', !w.N); setS('s-s', !w.S); setS('s-w', !w.W); setS('s-e', !w.E);
     }
 
     function startDrawing() {
-        isDrawingMode = true;
         document.getElementById('local-panel').style.display = 'none';
-        document.getElementById('maze-display-container').style.display = 'block';
+        document.getElementById('maze-display-container').classList.remove('hidden');
         document.getElementById('submit-btn').classList.remove('hidden');
-        document.getElementById('msg').innerText = "【模式：繪圖還原】點擊邊界畫牆";
-        render('draw');
+        document.getElementById('msg').innerText = "【模式：地圖還原】憑記憶畫出結構";
+        renderMaze('draw');
     }
 
     function validate() {
@@ -301,10 +302,10 @@
         }
         if(errors === 0) {
             clearInterval(timerInterval);
-            document.getElementById('msg').innerHTML = "<span style='color:var(--neon-blue)'>COMPLETE! 挑戰成功</span>";
+            document.getElementById('msg').innerHTML = "<span style='color:var(--neon-blue)'>🏆 PERFECT! 完美還原</span>";
             document.getElementById('submit-btn').classList.add('hidden');
         } else {
-            document.getElementById('msg').innerText = `核對失敗：還有 ${errors} 處差異，請繼續！`;
+            document.getElementById('msg').innerHTML = `<span style='color:var(--neon-pink)'> 核對失敗：還有 ${errors} 處錯誤，請繼續！</span>`;
         }
     }
 
@@ -317,17 +318,10 @@
             if(k==='a' && !w.W) player.x--;
             if(k==='d' && !w.E) player.x++;
             updateSensors();
-            // 視覺回饋
-            const keyMap = {w:'s-n', s:'s-s', a:'s-w', d:'s-e'};
-            if(keyMap[k]) {
-                const el = document.getElementById(keyMap[k]);
-                el.style.transform = "scale(1.2)";
-                setTimeout(() => el.style.transform = "scale(1)", 100);
-            }
         }
     };
 
-    initMaze();
+    initMazeData();
 </script>
 </body>
 </html>

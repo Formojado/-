@@ -3,14 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BRAIN IDOL: THE DARK VOID</title>
+    <title>BRAIN IDOL: LABYRINTH WALKER PRO</title>
     <style>
         :root {
-            --neon-blue: #00f2ff;
-            --neon-pink: #ff2e63;
-            --bg-dark: #010103;
-            --grid-bg: #000;
-            --wall-color: #1a237e; /* 基礎牆壁顏色 */
+            --neon-blue: #00f2ff; /* 外牆藍色：固定 */
+            --neon-pink: #ff2e63; /* 內牆粉色：可操作 */
+            --bg-dark: #000000;
+            --grid-line: #1a1a1a; /* 網格線顏色 */
+            --wall-thickness: 4px; /* 精確的單層牆壁厚度 */
         }
         body {
             background-color: var(--bg-dark);
@@ -20,15 +20,13 @@
             flex-direction: column;
             align-items: center;
             margin: 0;
-            overflow: hidden; /* 防止滾動條干擾 */
+            overflow: hidden;
         }
         .header {
             width: 100%;
-            padding: 15px;
+            padding: 10px;
             text-align: center;
             border-bottom: 1px solid #222;
-            background: rgba(0,0,0,0.8);
-            z-index: 100;
         }
         #timer {
             font-size: 50px;
@@ -38,86 +36,137 @@
             font-family: 'Courier New', monospace;
         }
         
-        /* 迷宮容器 - 優化外觀 */
+        /* 迷宮容器 */
         .maze-container {
             position: relative;
-            margin: 30px;
-            padding: 5px; /* 給外圍霓虹預留空間 */
-            background: var(--grid-bg);
+            margin: 20px;
+            padding: 2px; /* 給最外層藍色霓虹預留空間 */
+            background: #000;
             display: flex;
             align-items: center;
             justify-content: center;
-            box-shadow: 0 0 20px rgba(0, 242, 255, 0.1); /* 整體淡霓虹 */
         }
         .maze-grid {
             display: grid;
-            gap: 0; /* 關鍵：確保方塊之間無縫隙 */
+            gap: 0; /* 關鍵：方塊之間無縫隙 */
             background: #000;
+            /* 使用網格線模擬單層牆壁 */
+            box-shadow: inset 0 0 0 1px var(--grid-line);
         }
         .cell {
             position: relative;
-            box-sizing: border-box; /* 關鍵：邊框包含在寬高內 */
-            background: rgba(255,255,255,0.01);
-            /* 預設邊框，確保交界點方形完整 */
-            border: 0px solid transparent; 
+            box-sizing: border-box;
+            background: #000;
+            /* 基礎網格線，幫助探索階段判斷 */
+            outline: 1px solid var(--grid-line);
+            outline-offset: -1px;
         }
         
-        /* 新版無縫、均勻霓虹牆壁 */
-        .w-n { 
-            border-top: 4px solid var(--wall-color); 
-            box-shadow: inset 0 6px 10px -4px var(--neon-blue); 
+        /* ========================================= */
+        /* 核心視覺重製 (關鍵)           */
+        /* ========================================= */
+
+        /* 1. 外圍牆壁：固定藍色，無縫接合 */
+        .outer-wall {
+            position: absolute;
+            background: var(--neon-blue);
+            box-shadow: 0 0 10px var(--neon-blue);
+            z-index: 20;
         }
-        .w-s { 
-            border-bottom: 4px solid var(--wall-color); 
-            box-shadow: inset 0 -6px 10px -4px var(--neon-blue); 
+        
+        /* 2. 內部牆壁：單層、粉色、與節點完美接合 */
+        .draw-wall { 
+            position: absolute; 
+            z-index: 10; 
+            background: rgba(255,255,255,0.02); /* 未點亮時隱約可見 */
+            transition: background 0.1s;
         }
-        .w-w { 
-            border-left: 4px solid var(--wall-color); 
-            box-shadow: inset 6px 0 10px -4px var(--neon-blue); 
+        
+        /* 水平牆（北/南）*/
+        .draw-h { 
+            width: calc(100% + var(--wall-thickness)); /* 延伸以覆蓋節點 */
+            height: var(--wall-thickness); 
+            left: calc(var(--wall-thickness) / -2); /* 對齊中心 */
         }
-        .w-e { 
-            border-right: 4px solid var(--wall-color); 
-            box-shadow: inset -6px 0 10px -4px var(--neon-blue); 
+        /* 垂直牆（西/東）*/
+        .draw-v { 
+            height: calc(100% + var(--wall-thickness)); 
+            width: var(--wall-thickness); 
+            top: calc(var(--wall-thickness) / -2);
         }
+
+        /* 當牆被點亮（ wall-active） */
+        .wall-active { 
+            background: var(--neon-pink) !important; 
+            box-shadow: 0 0 12px var(--neon-pink); 
+        }
+
+        /* 關鍵：完美接合視覺邏輯 */
+        /* 利用偽元素在牆壁兩端生成完美的方形節點，實現無縫連接 */
+        .wall-active::before, .wall-active::after {
+            content: '';
+            position: absolute;
+            width: var(--wall-thickness);
+            height: var(--wall-thickness);
+            background: var(--neon-pink);
+            box-shadow: 0 0 12px var(--neon-pink);
+        }
+        
+        /* 對於水平牆，節點在左右兩端 */
+        .draw-h.wall-active::before { left: 0; }
+        .draw-h.wall-active::after { right: 0; }
+        
+        /* 對於垂直牆，節點在上下兩端 */
+        .draw-v.wall-active::before { top: 0; }
+        .draw-v.wall-active::after { bottom: 0; }
+
+        /* 鎖定固定牆（作答模式下不可動）*/
+        .draw-wall.locked { 
+            background: var(--neon-blue) !important; 
+            box-shadow: 0 0 10px var(--neon-blue) !important;
+            cursor: not-allowed;
+            pointer-events: none; /* 禁用點擊 */
+        }
+        /* 鎖定牆的節點也是藍色 */
+        .locked::before, .locked::after { background: var(--neon-blue) !important; box-shadow: 0 0 10px var(--neon-blue) !important; }
+
+        /* 滑鼠懸停效果 */
+        .draw-wall:not(.locked):hover { background: rgba(255, 46, 99, 0.2); }
 
         /* 探索感應器 */
         #local-panel {
             display: none;
             width: 300px;
-            background: #05050a;
-            border: 1px solid var(--neon-blue);
-            padding: 20px;
+            background: #0d0d0d;
+            border: 2px solid var(--neon-blue);
+            padding: 15px;
             border-radius: 8px;
             text-align: center;
-            box-shadow: 0 0 15px rgba(0, 242, 255, 0.2);
         }
         .sensor-display {
             display: grid;
             grid-template-areas: ". up ." "left mid right" ". down .";
             gap: 15px;
             justify-content: center;
-            margin: 20px 0;
+            margin: 15px 0;
         }
         .sensor {
             width: 55px;
             height: 55px;
-            border: 1px solid #222;
+            border: 1px solid #333;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-weight: bold;
             border-radius: 4px;
-            color: #333;
-            transition: all 0.15s ease;
+            color: #444;
         }
         .sensor.active {
             background: var(--neon-blue);
             color: #000;
-            box-shadow: 0 0 20px var(--neon-blue);
+            box-shadow: 0 0 15px var(--neon-blue);
             border: none;
         }
 
-        /* 按鈕視覺 */
         button {
             background: transparent;
             border: 1px solid var(--neon-blue);
@@ -129,24 +178,9 @@
             letter-spacing: 2px;
             transition: 0.2s;
         }
-        button:hover {
-            background: rgba(0, 242, 255, 0.1);
-            box-shadow: 0 0 15px var(--neon-blue);
-        }
+        button:hover { background: rgba(0, 242, 255, 0.1); box-shadow: 0 0 15px var(--neon-blue); }
 
-        /* 作答區牆壁互動 */
-        .draw-wall { 
-            position: absolute; 
-            z-index: 10; 
-            background: rgba(255,255,255,0.03); 
-        }
-        .draw-wall:hover { background: rgba(255, 46, 99, 0.2); }
-        .wall-active { 
-            background: var(--neon-pink) !important; 
-            box-shadow: 0 0 15px var(--neon-pink); 
-        }
-        
-        #msg { height: 35px; margin: 15px; font-size: 18px; color: white; font-weight: bold; }
+        #msg { height: 35px; margin: 10px; font-size: 18px; color: white; font-weight: bold; }
         .hidden { display: none !important; }
     </style>
 </head>
@@ -167,6 +201,7 @@
 <div id="msg">【模式：無盡黑暗】點擊按鈕，開始黑暗探索</div>
 
 <div id="maze-display-container" class="maze-container hidden">
+    <div id="outer-walls"></div>
     <div id="maze-grid" class="maze-grid"></div>
 </div>
 
@@ -183,17 +218,19 @@
 
 <div id="controls">
     <button id="start-btn" onclick="startVoidExploration()">開始盲走探索</button>
-    <button id="submit-btn" class="hidden" onclick="validate()">提交地圖</button>
+    <button id="submit-btn" class="hidden" onclick="validate()">提交核對</button>
     <button onclick="location.reload()" style="border-color:#444; color:#444">刷新地圖</button>
 </div>
 
 <script>
     let SIZE = 5;
+    const CELL_SIZE = 60; // 方塊大小
+    const THICKNESS = 4; // 牆壁厚度
     let maze = [];
     let player = {x: 0, y: 0};
     let startTime, timerInterval;
 
-    // 1. DFS 算法生成全連通迷宮 (數據不重複，保證連通)
+    // DFS 生成連通迷宮
     function initMazeData() {
         SIZE = parseInt(document.getElementById('size-select').value);
         maze = Array(SIZE).fill().map(() => Array(SIZE).fill().map(() => ({N:true, S:true, W:true, E:true, v:false})));
@@ -216,7 +253,6 @@
         }
     }
 
-    // 2. 開始黑暗探索：移除了觀察按鈕，直接隱藏地圖進入 WASD 模式
     function startVoidExploration() {
         document.getElementById('start-btn').classList.add('hidden');
         document.getElementById('local-panel').style.display = 'block';
@@ -226,43 +262,59 @@
         updateSensors();
     }
 
-    // 3. 渲染邏輯 - 優化 CSS 以實現無縫接合
-    function renderMaze(mode) {
+    // 渲染作答區 - 核心視覺重製
+    function renderDrawingMode() {
         const grid = document.getElementById('maze-grid');
-        grid.style.gridTemplateColumns = `repeat(${SIZE}, 60px)`;
+        grid.style.gridTemplateColumns = `repeat(${SIZE}, ${CELL_SIZE}px)`;
         grid.innerHTML = '';
+        
+        // 生成作答牆壁熱區
         for(let y=0; y<SIZE; y++) {
             for(let x=0; x<SIZE; x++) {
                 const cell = document.createElement('div');
                 cell.className = 'cell';
-                cell.style.width = '60px'; cell.style.height = '60px';
+                cell.style.width = `${CELL_SIZE}px`; cell.style.height = `${CELL_SIZE}px`;
                 
-                if(mode === 'view') {
-                    // 最終答案顯示（驗證用）
-                    if(maze[y][x].N) cell.classList.add('w-n');
-                    if(maze[y][x].S) cell.classList.add('w-s');
-                    if(maze[y][x].W) cell.classList.add('w-w');
-                    if(maze[y][x].E) cell.classList.add('w-e');
-                } else if(mode === 'draw') {
-                    // 作答模式
-                    ['N','S','W','E'].forEach(d => {
-                        const w = document.createElement('div');
-                        w.className = 'draw-wall';
-                        w.id = `w-${x}-${y}-${d}`;
-                        // 調整作答牆壁熱區，使其與 CSS 邊框位置精確對齊
-                        const hS = '12px'; // 熱區寬度
-                        if(d==='N'||d==='S') { w.style.width='100%'; w.style.height=hS; d==='N'?w.style.top=0:w.style.bottom=0; }
-                        else { w.style.height='100%'; w.style.width=hS; d==='W'?w.style.left=0:w.style.right=0; }
+                // 作答熱區邏輯
+                // 我們只生成北和西的牆壁熱區，避免相鄰方塊生成雙重牆壁，實現完美的「單層」
+                const wallsToCreate = [];
+                if(y >= 0) wallsToCreate.push('N'); // 每一格都生成北牆
+                if(x >= 0) wallsToCreate.push('W'); // 每一格都生成西牆
+                // 特殊處理最後一行和最後一列的外牆（固定藍色）
+                if(y === SIZE-1) wallsToCreate.push('S');
+                if(x === SIZE-1) wallsToCreate.push('E');
+
+                wallsToCreate.forEach(d => {
+                    const w = document.createElement('div');
+                    w.id = `w-${x}-${y}-${d}`;
+                    w.className = 'draw-wall';
+                    
+                    // 根據北/西、南/東設定 CSS 樣式 (水平/垂直)
+                    if(d === 'N' || d === 'S') {
+                        w.classList.add('draw-h'); // 水平
+                        if(d === 'N') w.style.top = `calc(${THICKNESS}px / -2)`;
+                        else w.style.bottom = `calc(${THICKNESS}px / -2)`;
+                    } else {
+                        w.classList.add('draw-v'); // 垂直
+                        if(d === 'W') w.style.left = `calc(${THICKNESS}px / -2)`;
+                        else w.style.right = `calc(${THICKNESS}px / -2)`;
+                    }
+
+                    // 判定是否為固定外牆（藍色鎖定）
+                    if( (y===0 && d==='N') || (y===SIZE-1 && d==='S') || (x===0 && d==='W') || (x===SIZE-1 && d==='E') ) {
+                        w.classList.add('wall-active', 'locked');
+                    } else {
+                        // 內部粉色牆壁，可點擊
                         w.onclick = () => w.classList.toggle('wall-active');
-                        cell.appendChild(w);
-                    });
-                }
+                    }
+                    cell.appendChild(w);
+                });
                 grid.appendChild(cell);
             }
         }
     }
 
-    // 遊戲流程
+    // 遊戲流程邏輯
     function updateTimer() {
         const diff = Date.now() - startTime;
         const m = Math.floor(diff/60000).toString().padStart(2,'0');
@@ -285,27 +337,34 @@
         document.getElementById('local-panel').style.display = 'none';
         document.getElementById('maze-display-container').classList.remove('hidden');
         document.getElementById('submit-btn').classList.remove('hidden');
-        document.getElementById('msg').innerText = "【模式：地圖還原】憑記憶畫出結構";
-        renderMaze('draw');
+        document.getElementById('msg').innerText = "【模式：地圖還原】憑記憶畫出結構（藍色固定，粉色可點擊）";
+        renderDrawingMode(); // 啟動重製後的作答模式
     }
 
     function validate() {
         let errors = 0;
+        // 只核對內部粉色牆壁（北和西）
         for(let y=0; y<SIZE; y++) {
             for(let x=0; x<SIZE; x++) {
-                ['N','S','W','E'].forEach(d => {
+                ['N','W'].forEach(d => {
+                    // 排除最外圈的固定牆壁
+                    if( (y===0 && d==='N') || (x===0 && d==='W') ) return;
+
                     const real = maze[y][x][d];
-                    const user = document.getElementById(`w-${x}-${y}-${d}`).classList.contains('wall-active');
+                    const el = document.getElementById(`w-${x}-${y}-${d}`);
+                    const user = el.classList.contains('wall-active');
                     if(real !== user) errors++;
                 });
             }
         }
+        
+        const msgEl = document.getElementById('msg');
         if(errors === 0) {
             clearInterval(timerInterval);
-            document.getElementById('msg').innerHTML = "<span style='color:var(--neon-blue)'>🏆 PERFECT! 完美還原</span>";
+            msgEl.innerHTML = "<span style='color:var(--neon-blue)'>🏆 PERFECT! 完美還原</span>";
             document.getElementById('submit-btn').classList.add('hidden');
         } else {
-            document.getElementById('msg').innerHTML = `<span style='color:var(--neon-pink)'> 核對失敗：還有 ${errors} 處錯誤，請繼續！</span>`;
+            msgEl.innerHTML = `<span style='color:var(--neon-pink)'> 核對失敗：還有 ${errors} 處錯誤，請繼續！</span>`;
         }
     }
 

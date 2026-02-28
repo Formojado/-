@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BRAIN IDOL: LABYRINTH WALKER PRO</title>
+    <title>LABYRINTH WALKER</title>
     <style>
         :root {
             --neon-blue: #00f2ff;
@@ -16,49 +16,37 @@
         body {
             background-color: var(--bg-dark);
             color: white;
-            font-family: 'PingFang TC', sans-serif;
+            font-family: sans-serif;
             display: flex;
             flex-direction: column;
             align-items: center;
             margin: 0;
             min-height: 100vh;
             user-select: none;
-            overflow-x: hidden;
         }
         .header {
             width: 100%;
             padding: 15px;
             text-align: center;
             border-bottom: 1px solid #222;
-            background: rgba(0,0,0,0.9);
-            position: sticky;
-            top: 0;
-            z-index: 100;
         }
         #timer {
             font-size: 40px;
-            font-weight: 800;
+            font-weight: bold;
             color: var(--neon-blue);
-            text-shadow: 0 0 10px var(--neon-blue);
-            font-family: 'Courier New', monospace;
+            font-family: monospace;
         }
         
-        /* 迷宮作答區容器 */
         .maze-container {
             position: relative;
             margin: 20px;
             background: #000;
-            max-width: 95vw;
             overflow: auto;
-            padding: 10px;
-            border-radius: 8px;
         }
         .maze-grid {
             display: grid;
             gap: 0;
             border: var(--wall-width) solid var(--neon-blue);
-            box-shadow: 0 0 15px var(--neon-blue);
-            background: #000;
         }
         .cell {
             position: relative;
@@ -70,20 +58,10 @@
         }
 
         .start-cell { background: rgba(0, 255, 153, 0.1) !important; }
-        .start-text {
-            position: absolute;
-            font-size: 8px;
-            color: var(--neon-green);
-            top: 50%; left: 50%;
-            transform: translate(-50%, -50%);
-            pointer-events: none;
-        }
 
-        /* 牆壁熱區 */
         .wall-trigger {
             position: absolute;
             z-index: 10;
-            transition: 0.15s;
             cursor: pointer;
         }
         .h-wall { width: 100%; height: 10px; left: 0; }
@@ -91,82 +69,64 @@
 
         .wall-active {
             background: var(--neon-pink) !important;
-            box-shadow: 0 0 8px var(--neon-pink);
+            box-shadow: 0 0 5px var(--neon-pink);
         }
-        .wall-trigger:hover:not(.wall-active) { background: rgba(255, 46, 99, 0.3); }
 
-        /* 盲走感應器面板 */
         #local-panel {
             display: none;
-            width: 300px;
+            width: 280px;
             background: #111;
-            border: 2px solid var(--neon-blue);
-            padding: 25px;
-            border-radius: 15px;
+            border: 1px solid var(--neon-blue);
+            padding: 20px;
+            border-radius: 8px;
             text-align: center;
             margin: 20px auto;
-            box-shadow: 0 0 20px rgba(0, 242, 255, 0.2);
         }
         .sensor-display {
             display: grid;
             grid-template-areas: ". up ." "left mid right" ". down .";
-            gap: 15px;
+            gap: 10px;
             justify-content: center;
-            margin: 20px 0;
+            margin: 15px 0;
         }
         .sensor {
-            width: 55px;
-            height: 55px;
-            border: 2px solid #333;
+            width: 50px;
+            height: 50px;
+            border: 1px solid #333;
             display: flex;
             align-items: center;
             justify-content: center;
-            border-radius: 10px;
+            border-radius: 5px;
             color: #444;
             font-weight: bold;
-            font-size: 18px;
         }
         .sensor.active {
             background: var(--neon-blue);
             color: #000;
-            box-shadow: 0 0 15px var(--neon-blue);
             border: none;
         }
 
         .menu-card {
             background: #111;
-            padding: 30px;
-            border-radius: 15px;
+            padding: 20px;
+            border-radius: 8px;
             border: 1px solid #333;
             margin-top: 40px;
             text-align: center;
-            width: 300px;
         }
-        select {
-            background: #000;
-            color: white;
-            border: 1px solid var(--neon-blue);
-            padding: 8px 15px;
-            border-radius: 5px;
-            margin: 10px;
-            font-size: 16px;
-        }
-        button {
+        select, button {
             background: transparent;
             border: 1px solid var(--neon-blue);
             color: var(--neon-blue);
-            padding: 12px 25px;
+            padding: 10px;
             font-size: 14px;
             cursor: pointer;
-            text-transform: uppercase;
-            letter-spacing: 2px;
-            margin: 10px 5px;
-            transition: 0.3s;
+            margin: 5px;
             border-radius: 4px;
         }
-        button:hover { background: var(--neon-blue); color: #000; box-shadow: 0 0 15px var(--neon-blue); }
+        button:hover { background: var(--neon-blue); color: #000; }
         
-        #msg { min-height: 40px; margin: 20px; color: white; font-weight: bold; text-align: center; font-size: 18px; }
+        #msg { min-height: 30px; margin: 15px; color: white; text-align: center; }
         .hidden { display: none !important; }
     </style>
 </head>
@@ -176,44 +136,42 @@
     <div id="timer">00:00.00</div>
 </div>
 
-<div id="msg">READY PLAYER ONE</div>
+<div id="msg"></div>
 
 <div id="maze-display-container" class="maze-container hidden">
     <div id="maze-grid" class="maze-grid"></div>
 </div>
 
 <div id="local-panel">
-    <div id="nav-info" style="font-size: 14px; color: var(--neon-green); margin-bottom: 15px; letter-spacing: 1px;">POS: [0, 0]</div>
     <div class="sensor-display">
         <div id="s-n" class="sensor" style="grid-area: up;">W</div>
         <div id="s-w" class="sensor" style="grid-area: left;">A</div>
-        <div id="s-mid" class="sensor" style="grid-area: mid; border: none; font-size: 24px;">👤</div>
+        <div id="s-mid" class="sensor" style="grid-area: mid; border: none;">👤</div>
         <div id="s-e" class="sensor" style="grid-area: right;">D</div>
         <div id="s-s" class="sensor" style="grid-area: down;">S</div>
     </div>
-    <button onclick="goToDraw()" style="border-color: var(--neon-pink); color: var(--neon-pink); width: 100%;">切換至作答地圖</button>
+    <button onclick="goToDraw()" style="border-color: var(--neon-pink); color: var(--neon-pink);">作答地圖</button>
 </div>
 
 <div id="setup-menu" class="menu-card">
-    <h2 style="color: var(--neon-blue); margin-top: 0;">測繪難度</h2>
     <select id="size-select">
-        <option value="4">4 x 4 (訓練)</option>
-        <option value="5">5 x 5 (標準)</option>
-        <option value="6">6 x 6 (挑戰)</option>
-        <option value="7">7 x 7 (專家)</option>
-        <option value="8">8 x 8 (大師)</option>
-        <option value="9">9 x 9 (極限)</option>
+        <option value="4">4 x 4</option>
+        <option value="5">5 x 5</option>
+        <option value="6">6 x 6</option>
+        <option value="7">7 x 7</option>
+        <option value="8">8 x 8</option>
+        <option value="9">9 x 9</option>
     </select>
-    <div style="margin: 15px 0; font-size: 13px;">
-        <input type="checkbox" id="show-errors-toggle" checked> 顯示錯誤數量
+    <div style="margin: 10px 0; font-size: 12px;">
+        <input type="checkbox" id="show-errors-toggle" checked> 顯示錯誤數
     </div>
-    <button onclick="startChallenge()">啟動迷宮</button>
+    <button onclick="startChallenge()">開始</button>
 </div>
 
 <div id="action-controls" class="hidden">
-    <button onclick="backToExplore()" style="border-color: var(--neon-green); color: var(--neon-green);">返回起點重測路徑</button>
-    <button id="submit-btn" onclick="checkResult()">提交地圖核對</button>
-    <button onclick="location.reload()" style="border-color:#444; color:#444">結束挑戰</button>
+    <button onclick="backToExplore()" style="border-color: var(--neon-green); color: var(--neon-green);">返回探索</button>
+    <button id="submit-btn" onclick="checkResult()">提交</button>
+    <button onclick="location.reload()">重新</button>
 </div>
 
 <script>
@@ -228,7 +186,6 @@
         let grid = Array(SIZE).fill().map(() => Array(SIZE).fill().map(() => ({N:true, S:true, W:true, E:true, v:false})));
         let stack = [[0,0]];
         grid[0][0].v = true;
-        
         while(stack.length > 0) {
             let [cx, cy] = stack[stack.length-1];
             let adjs = [];
@@ -236,7 +193,6 @@
             if(cy < SIZE-1 && !grid[cy+1][cx].v) adjs.push(['S', cx, cy+1]);
             if(cx > 0 && !grid[cy][cx-1].v) adjs.push(['W', cx-1, cy]);
             if(cx < SIZE-1 && !grid[cy][cx+1].v) adjs.push(['E', cx+1, cy]);
-            
             if(adjs.length > 0) {
                 let [dir, nx, ny] = adjs[Math.floor(Math.random()*adjs.length)];
                 grid[cy][cx][dir] = false;
@@ -263,7 +219,7 @@
         document.getElementById('maze-display-container').classList.add('hidden');
         document.getElementById('action-controls').classList.add('hidden');
         document.getElementById('local-panel').style.display = 'block';
-        document.getElementById('msg').innerText = "探索模式：使用鍵盤 WASD 移動";
+        document.getElementById('msg').innerText = "探索中";
         updateSensors();
     }
 
@@ -271,7 +227,7 @@
         document.getElementById('local-panel').style.display = 'none';
         document.getElementById('maze-display-container').classList.remove('hidden');
         document.getElementById('action-controls').classList.remove('hidden');
-        document.getElementById('msg').innerText = "作答模式：點擊方格邊緣還原牆壁";
+        document.getElementById('msg').innerText = "作答模式";
     }
 
     function updateTimer() {
@@ -288,26 +244,19 @@
         document.getElementById('s-s').className = 'sensor ' + (!w.S ? 'active' : '');
         document.getElementById('s-w').className = 'sensor ' + (!w.W ? 'active' : '');
         document.getElementById('s-e').className = 'sensor ' + (!w.E ? 'active' : '');
-        document.getElementById('nav-info').innerText = `POS: [${player.x}, ${player.y}]`;
     }
 
     function renderDrawGrid() {
         const grid = document.getElementById('maze-grid');
         grid.style.gridTemplateColumns = `repeat(${SIZE}, 50px)`;
         grid.innerHTML = '';
-        
         for(let y=0; y<SIZE; y++) {
             for(let x=0; x<SIZE; x++) {
                 const cell = document.createElement('div');
                 cell.className = 'cell';
-                if(x===0 && y===0) {
-                    cell.classList.add('start-cell');
-                    cell.innerHTML = '<span class="start-text">START</span>';
-                }
-
+                if(x===0 && y===0) cell.classList.add('start-cell');
                 if(y > 0) createWall(cell, x, y, 'N');
                 if(x > 0) createWall(cell, x, y, 'W');
-                
                 grid.appendChild(cell);
             }
         }
@@ -339,22 +288,19 @@
                 }
             }
         }
-
-        const showCount = document.getElementById('show-errors-toggle').checked;
         if(errors === 0) {
             clearInterval(timerInterval);
             isGameRunning = false;
-            document.getElementById('msg').innerHTML = "<span style='color:var(--neon-blue)'>MISSION ACCOMPLISHED!</span>";
-            document.getElementById('action-controls').innerHTML = '<button onclick="location.reload()">REBOOT SYSTEM</button>';
+            document.getElementById('msg').innerText = "完成";
+            document.getElementById('action-controls').innerHTML = '<button onclick="location.reload()">重新</button>';
         } else {
-            let errorMsg = showCount ? `DETECTED: ${errors} ERRORS` : "MAP MISMATCH DETECTED";
-            document.getElementById('msg').innerHTML = `<span style='color:var(--neon-pink)'>${errorMsg}</span>`;
+            const showCount = document.getElementById('show-errors-toggle').checked;
+            document.getElementById('msg').innerText = showCount ? `錯誤: ${errors}` : "地圖錯誤";
         }
     }
 
     window.onkeydown = (e) => {
         if(!isGameRunning || document.getElementById('local-panel').style.display === 'none') return;
-        
         let k = e.key.toLowerCase();
         let w = mazeData[player.y][player.x];
         let moved = false;
@@ -362,7 +308,6 @@
         else if((k==='s' || k==='arrowdown') && !w.S) { player.y++; moved = true; }
         else if((k==='a' || k==='arrowleft') && !w.W) { player.x--; moved = true; }
         else if((k==='d' || k==='arrowright') && !w.E) { player.x++; moved = true; }
-        
         if(moved) updateSensors();
     };
 </script>

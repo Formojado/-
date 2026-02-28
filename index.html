@@ -1,99 +1,333 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="zh-Hant">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Russia City Speedrun - Survival Mode</title>
-  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
-  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
-  <style>
-    html,body{height:100%;margin:0;font-family:'Segoe UI', Roboto, Helvetica, Arial, sans-serif;background:#0f1724;color:#e6eef8;overflow:hidden;}
-    #map{height:100vh;width:100vw;position:relative;z-index: 1;}
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BRAIN IDOL: LABYRINTH WALKER</title>
+    <style>
+        :root {
+            --neon-blue: #00f2ff;
+            --neon-pink: #ff2e63;
+            --bg-dark: #020205;
+            --grid-bg: #0a0a15;
+            --wall-color: #394481;
+        }
+        body {
+            background-color: var(--bg-dark);
+            color: white;
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin: 0;
+            overflow-x: hidden;
+        }
+        /* 比賽看板風格 */
+        .header {
+            width: 100%;
+            padding: 20px;
+            background: linear-gradient(180deg, #111 0%, transparent 100%);
+            text-align: center;
+            border-bottom: 1px solid #333;
+        }
+        #timer {
+            font-size: 60px;
+            font-weight: 800;
+            color: var(--neon-blue);
+            text-shadow: 0 0 20px var(--neon-blue);
+            font-family: 'Courier New', monospace;
+        }
+        /* 迷宮容器 */
+        .maze-container {
+            position: relative;
+            margin: 20px;
+            padding: 10px;
+            border: 2px solid #333;
+            background: var(--grid-bg);
+            box-shadow: 0 0 50px rgba(0,0,0,1);
+        }
+        .maze-grid {
+            display: grid;
+            gap: 0;
+            transition: all 0.5s ease;
+        }
+        .cell {
+            position: relative;
+            box-sizing: border-box;
+            background: rgba(255,255,255,0.02);
+            transition: background 0.3s;
+        }
+        /* 牆壁樣式 - 更有立體感 */
+        .w-n { border-top: 4px solid var(--wall-color); box-shadow: inset 0 5px 5px -5px var(--neon-blue); }
+        .w-s { border-bottom: 4px solid var(--wall-color); }
+        .w-w { border-left: 4px solid var(--wall-color); }
+        .w-e { border-right: 4px solid var(--wall-color); }
 
-    .overlay-start{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(15, 23, 42, 0.95);z-index:1000;}
-    .start-box{background:#fff;color:#04263b;padding:40px;border-radius:24px;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,0.6);max-width:450px; line-height: 1.6;}
-    .start-box h2{margin:0 0 15px 0; color:#1e293b; font-size: 2rem;}
+        /* 探索面板 - 科技感 */
+        #local-panel {
+            display: none;
+            width: 320px;
+            background: #0d0d1a;
+            border: 2px solid var(--neon-blue);
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            box-shadow: 0 0 30px rgba(0, 242, 255, 0.2);
+        }
+        .sensor-display {
+            display: grid;
+            grid-template-areas: ". up ." "left mid right" ". down .";
+            gap: 10px;
+            justify-content: center;
+            margin: 20px 0;
+        }
+        .sensor {
+            width: 60px;
+            height: 60px;
+            border: 1px solid #333;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            border-radius: 4px;
+            transition: all 0.2s;
+            color: #444;
+        }
+        .sensor.active {
+            background: var(--neon-blue);
+            color: #000;
+            box-shadow: 0 0 15px var(--neon-blue);
+            border: none;
+        }
+        .key-hint { font-size: 10px; margin-top: 5px; color: #888; }
 
-    .info-bar{position:absolute;top:15px;left:50%;transform:translateX(-50%);background:rgba(15, 23, 42, 0.95);padding:12px 30px;border-radius:18px;display:flex;gap:25px;z-index:900;backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,0.15);box-shadow:0 8px 32px rgba(0,0,0,0.5);}
-    .info-item{display:flex;flex-direction:column;align-items:center; min-width: 70px;}
-    .info-label{font-size:0.7rem;text-transform:uppercase;letter-spacing:1.5px;opacity:0.6;margin-bottom:4px;}
-    .info-value{font-size:1.3rem;font-weight:800; font-variant-numeric: tabular-nums;}
+        /* 按鈕與交互 */
+        button {
+            background: transparent;
+            border: 1px solid var(--neon-blue);
+            color: var(--neon-blue);
+            padding: 10px 25px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: 0.3s;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+        button:hover {
+            background: var(--neon-blue);
+            color: black;
+            box-shadow: 0 0 20px var(--neon-blue);
+        }
+        .draw-wall {
+            position: absolute;
+            z-index: 5;
+            transition: 0.1s;
+        }
+        .draw-wall:hover { background: rgba(255, 46, 99, 0.3); }
+        .wall-active { background: var(--neon-pink) !important; box-shadow: 0 0 10px var(--neon-pink); }
+        
+        .difficulty-select { margin: 10px; }
+        select { background: #111; color: white; border: 1px solid var(--neon-blue); padding: 5px; }
 
-    .status-alive{color: #22c55e; text-shadow: 0 0 15px rgba(34,197,94,0.8);}
-    .status-dead{color: #ef4444; text-shadow: 0 0 15px rgba(239,68,68,0.8); animation: blink 0.8s infinite;}
-
-    .city-title{position:absolute;top:120px;left:50%;transform:translateX(-50%);z-index:1001;font-size:2.5rem;font-weight:900;color:#fff;text-shadow:0 0 25px rgba(0,0,0,1), 4px 4px 0px #e11d48;pointer-events:none;text-align:center;width:100%;}
-
-    .btn{background:#e11d48;color:#fff;border:none;padding:16px 32px;border-radius:14px;font-weight:700;cursor:pointer;font-size:1.1rem;transition:0.2s; margin-top: 15px;}
-    .btn:hover{background:#be123c; transform: translateY(-2px);}
-
-    .modal-backdrop{position:fixed;inset:0;background:rgba(2,6,23,0.92);display:flex;align-items:center;justify-content:center;z-index:2000;backdrop-filter:blur(12px);}
-    .modal{background:#fff;color:#04263b;padding:45px;border-radius:28px;width:380px;text-align:center;}
-
-    @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
-  </style>
+        #msg { height: 30px; margin: 15px; color: var(--neon-pink); font-weight: bold; }
+    </style>
 </head>
 <body>
 
-  <div id="map"></div>
-
-  <div class="info-bar">
-    <div class="info-item"><span class="info-label">Time</span><span id="time" class="info-value">00:00</span></div>
-    <div class="info-item"><span class="info-label">Progress</span><span class="info-value"><span id="progress">0</span>/30</span></div>
-    <div class="info-item"><span class="info-label">Score</span><span id="score" class="info-value">0</span></div>
-    <div class="info-item" id="statusBox" style="display:none;"><span class="info-label">Status</span><span id="aliveStatus" class="info-value status-alive">ALIVE</span></div>
-  </div>
-
-  <div id="overlayStart" class="overlay-start">
-    <div class="start-box">
-      <h2>Russia City Speedrun</h2>
-      <p><b>Survival Rules:</b><br>Russia is vast! Your click must be within <b>100km</b> of the target city.<br>If you miss, you are "OUT", but you can keep playing for practice.</p>
-      <button id="startBtn" class="btn">Start Russian Run</button>
+<div class="header">
+    <div id="timer">00:00.00</div>
+    <div class="difficulty-select">
+        難度選擇：
+        <select id="size-select" onchange="resetGame()">
+            <option value="5">5x5 (初級)</option>
+            <option value="7">7x7 (中級)</option>
+            <option value="10">10x10 (最強大腦)</option>
+        </select>
     </div>
-  </div>
+</div>
 
-  <div class="city-title" id="cityTitle" style="display:none"></div>
+<div id="msg">【模式：全局觀測】</div>
 
-  <div id="endModal" style="display:none" class="modal-backdrop">
-    <div class="modal">
-      <h2 id="resultTitle" style="font-size: 2rem; margin-bottom: 10px;">End of Route</h2>
-      <div id="stats" style="font-size:1.2rem; margin: 25px 0; color: #475569; line-height: 1.5;"></div>
-      <button id="playAgainBtn" class="btn">Try Again</button>
+<div id="maze-display-container" class="maze-container">
+    <div id="maze-grid" class="maze-grid"></div>
+</div>
+
+<div id="local-panel">
+    <div class="sensor-display">
+        <div id="s-n" class="sensor" style="grid-area: up;">W</div>
+        <div id="s-w" class="sensor" style="grid-area: left;">A</div>
+        <div id="s-mid" class="sensor" style="grid-area: mid; border: none; font-size: 24px;">👤</div>
+        <div id="s-e" class="sensor" style="grid-area: right;">D</div>
+        <div id="s-s" class="sensor" style="grid-area: down;">S</div>
     </div>
-  </div>
+    <button onclick="startDrawing()" style="border-color: var(--neon-pink); color: var(--neon-pink);">進入作答區</button>
+</div>
 
-  <script>
-    const RUSSIA_CITIES = [
-        {name:"Moscow (Москва)",coords:[55.7558,37.6173]},{name:"Saint Petersburg (Санкт-Петербург)",coords:[59.9343,30.3351]},{name:"Novosibirsk (Новосибирск)",coords:[55.0084,82.9357]},{name:"Yekaterinburg (Екатеринбург)",coords:[56.8389,60.6057]},{name:"Kazan (Казань)",coords:[55.7887,49.1221]},{name:"Nizhny Novgorod (Нижний Новгород)",coords:[56.3269,44.0059]},{name:"Chelyabinsk (Челябинск)",coords:[55.1644,61.4368]},{name:"Samara (Самара)",coords:[53.2029,50.1508]},{name:"Omsk (Омск)",coords:[54.9885,73.3242]},{name:"Rostov-on-Don (Ростов-на-Дону)",coords:[47.2357,39.7015]},{name:"Ufa (Уфа)",coords:[54.7388,55.9721]},{name:"Krasnoyarsk (Красноярск)",coords:[56.0153,92.8932]},{name:"Voronezh (Воронеж)",coords:[51.6608,39.2003]},{name:"Perm (Пермь)",coords:[58.0105,56.2502]},{name:"Volgograd (Волгоград)",coords:[48.708,44.5133]},{name:"Krasnodar (Краснодар)",coords:[45.0393,38.9872]},{name:"Saratov (Саратов)",coords:[51.5336,46.0342]},{name:"Tyumen (Тюмень)",coords:[57.1522,65.5272]},{name:"Murmansk (Мурманск)",coords:[68.9585,33.0827]},{name:"Izhevsk (Ижевск)",coords:[56.8498,53.2045]},{name:"Yakutsk (Якутск)",coords:[62.0355,129.6755]},{name:"Irkutsk (Иркутск)",coords:[52.287,104.305]},{name:"Yuzhno-Sakhalinsk (Южно-Сахалинск)",coords:[46.959,142.738]},{name:"Khabarovsk (Хабаровск)",coords:[48.4726,135.0577]},{name:"Vladivostok (Владивосток)",coords:[43.1198,131.8869]},{name:"Yaroslavl (Ярославль)",coords:[57.6261,39.8845]},{name:"Orenburg (Оренбург)",coords:[51.7666,55.0988]},{name:"Tomsk (Томск)",coords:[56.4977,84.9744]},{name:"Yelizovo (Елизово)",coords:[53.1831,158.3894]},{name:"Astrakhan (Астрахань)",coords:[46.3476,48.0302]}
-    ];
+<div id="controls">
+    <button id="start-btn" onclick="enterMaze()">開始挑戰</button>
+    <button id="submit-btn" class="hidden" onclick="validate()">提交答案</button>
+</div>
 
-    let cities=[], index=0, started=false, answered=false, markers=[], circles=[], score=0, startTime=null, timerInterval=null;
-    let isGameOver = false, deathCity = "", currentCityMarker = null;
+<script>
+    let SIZE = 5;
+    let maze = [];
+    let player = {x: 0, y: 0};
+    let startTime, timerInterval;
+    let isDrawingMode = false;
 
-    const map = L.map('map', {zoomControl:false}).setView([60, 95], 3);
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager_labels_under/{z}/{x}/{y}{r}.png').addTo(map);
+    function resetGame() {
+        SIZE = parseInt(document.getElementById('size-select').value);
+        clearInterval(timerInterval);
+        document.getElementById('timer').innerText = "00:00.00";
+        document.getElementById('start-btn').classList.remove('hidden');
+        document.getElementById('submit-btn').classList.add('hidden');
+        document.getElementById('local-panel').style.display = 'none';
+        document.getElementById('maze-display-container').style.display = 'block';
+        document.getElementById('msg').innerText = "【模式：全局觀測】";
+        player = {x: 0, y: 0};
+        isDrawingMode = false;
+        initMaze();
+    }
 
-    const timeEl=document.getElementById('time'), progressEl=document.getElementById('progress');
-    const scoreEl=document.getElementById('score'), aliveStatusEl=document.getElementById('aliveStatus');
-    const cityTitle=document.getElementById('cityTitle'), endModal=document.getElementById('endModal');
+    function initMaze() {
+        // DFS 生成全連通迷宮
+        maze = Array(SIZE).fill().map(() => Array(SIZE).fill().map(() => ({N:true, S:true, W:true, E:true, v:false})));
+        let stack = [[0,0]];
+        maze[0][0].v = true;
+        while(stack.length > 0) {
+            let [x, y] = stack[stack.length-1];
+            let adj = [];
+            if(y > 0 && !maze[y-1][x].v) adj.push(['N', x, y-1]);
+            if(y < SIZE-1 && !maze[y+1][x].v) adj.push(['S', x, y+1]);
+            if(x > 0 && !maze[y][x-1].v) adj.push(['W', x-1, y]);
+            if(x < SIZE-1 && !maze[y][x+1].v) adj.push(['E', x+1, y]);
+            if(adj.length > 0) {
+                let [d, nx, ny] = adj[Math.floor(Math.random()*adj.length)];
+                maze[y][x][d] = false;
+                maze[ny][nx][d === 'N' ? 'S' : d === 'S' ? 'N' : d === 'W' ? 'E' : 'W'] = false;
+                maze[ny][nx].v = true;
+                stack.push([nx, ny]);
+            } else stack.pop();
+        }
+        render('view');
+    }
 
-    function haversine(a,b){const R=6371;const dLat=(b[0]-a[0])*Math.PI/180, dLon=(b[1]-a[1])*Math.PI/180;const aa=Math.sin(dLat/2)**2 + Math.cos(a[0]*Math.PI/180)*Math.cos(b[0]*Math.PI/180)*Math.sin(dLon/2)**2;return R*2*Math.atan2(Math.sqrt(aa),Math.sqrt(1-aa));}
+    function render(mode) {
+        const grid = document.getElementById('maze-grid');
+        grid.style.gridTemplateColumns = `repeat(${SIZE}, 60px)`;
+        grid.innerHTML = '';
+        for(let y=0; y<SIZE; y++) {
+            for(let x=0; x<SIZE; x++) {
+                const cell = document.createElement('div');
+                cell.className = 'cell';
+                cell.style.width = '60px';
+                cell.style.height = '60px';
+                if(mode === 'view') {
+                    if(maze[y][x].N) cell.classList.add('w-n');
+                    if(maze[y][x].S) cell.classList.add('w-s');
+                    if(maze[y][x].W) cell.classList.add('w-w');
+                    if(maze[y][x].E) cell.classList.add('w-e');
+                    if(x === 0 && y === 0) cell.innerHTML = "🚩";
+                } else {
+                    // 繪圖模式牆壁
+                    const configs = [
+                        {d:'N', s:{top:0, left:0, width:'100%', height:'8px'}},
+                        {d:'S', s:{bottom:0, left:0, width:'100%', height:'8px'}},
+                        {d:'W', s:{top:0, left:0, width:'8px', height:'100%'}},
+                        {d:'E', s:{top:0, right:0, width:'8px', height:'100%'}}
+                    ];
+                    configs.forEach(c => {
+                        const w = document.createElement('div');
+                        w.className = 'draw-wall';
+                        Object.assign(w.style, c.s);
+                        w.id = `w-${x}-${y}-${c.d}`;
+                        w.onclick = () => w.classList.toggle('wall-active');
+                        cell.appendChild(w);
+                    });
+                }
+                grid.appendChild(cell);
+            }
+        }
+    }
 
-    function resetGame(){cities=[...RUSSIA_CITIES].sort(()=>Math.random()-0.5);index=0;score=0;started=false;isGameOver=false;deathCity="";clearMapObjects();progressEl.textContent="0";scoreEl.textContent="0";timeEl.textContent="00:00";aliveStatusEl.textContent="ALIVE";aliveStatusEl.className="info-value status-alive";document.getElementById('statusBox').style.display='none';if(timerInterval) clearInterval(timerInterval);document.getElementById('overlayStart').style.display='flex';endModal.style.display='none';cityTitle.style.display='none';map.setView([60,95],3);}
+    function enterMaze() {
+        document.getElementById('maze-display-container').style.display = 'none';
+        document.getElementById('start-btn').classList.add('hidden');
+        document.getElementById('local-panel').style.display = 'block';
+        document.getElementById('msg').innerText = "探索中... 使用 WASD 移動";
+        startTime = Date.now();
+        timerInterval = setInterval(updateTimer, 30);
+        updateSensors();
+    }
 
-    function startGame(){document.getElementById('overlayStart').style.display='none';document.getElementById('statusBox').style.display='flex';started=true;startTime=Date.now();timerInterval=setInterval(()=>{const diff=Date.now()-startTime;timeEl.textContent=`${String(Math.floor(diff/60000)).padStart(2,'0')}:${String(Math.floor((diff%60000)/1000)).padStart(2,'0')}`;},1000);showNextCity();}
+    function updateTimer() {
+        const diff = Date.now() - startTime;
+        const m = Math.floor(diff/60000).toString().padStart(2,'0');
+        const s = Math.floor((diff%60000)/1000).toString().padStart(2,'0');
+        const ms = Math.floor((diff%1000)/10).toString().padStart(2,'0');
+        document.getElementById('timer').innerText = `${m}:${s}.${ms}`;
+    }
 
-    function showNextCity(){answered=false;progressEl.textContent=index+1;cityTitle.textContent=cities[index].name;cityTitle.style.display='block';map.flyTo([60,95],3,{duration:1});}
+    function updateSensors() {
+        const w = maze[player.y][player.x];
+        const setSensor = (id, hasPath) => {
+            const el = document.getElementById(id);
+            if(hasPath) el.classList.add('active');
+            else el.classList.remove('active');
+        };
+        setSensor('s-n', !w.N); setSensor('s-s', !w.S);
+        setSensor('s-w', !w.W); setSensor('s-e', !w.E);
+    }
 
-    map.on('click',function(e){if(!started||answered)return;answered=true;const city=cities[index],clickCoords=[e.latlng.lat,e.latlng.lng];const dist=haversine(clickCoords,city.coords);markers.push(L.circleMarker(clickCoords,{radius:8,color:'#3b82f6',fillOpacity:1}).addTo(map));circles.push(L.circle(city.coords,{radius:100000,color:'#22c55e',weight:3,fillOpacity:0.2}).addTo(map));currentCityMarker=L.marker(city.coords).addTo(map).bindPopup(`<b>${city.name}</b><br>${dist.toFixed(1)} km`).openPopup();if(dist<=100){score+=Math.max(10,Math.round(100-(dist/10)*5));scoreEl.textContent=score;}else if(!isGameOver){isGameOver=true;deathCity=city.name;aliveStatusEl.textContent="OUT";aliveStatusEl.className="info-value status-dead";}map.flyTo(city.coords,6,{duration:0.8});setTimeout(()=>{clearMapObjects();index++;if(index<30){showNextCity();}else{endGame();}},2000);});
+    function startDrawing() {
+        isDrawingMode = true;
+        document.getElementById('local-panel').style.display = 'none';
+        document.getElementById('maze-display-container').style.display = 'block';
+        document.getElementById('submit-btn').classList.remove('hidden');
+        document.getElementById('msg').innerText = "【模式：繪圖還原】點擊邊界畫牆";
+        render('draw');
+    }
 
-    function clearMapObjects(){markers.forEach(m=>map.removeLayer(m));markers=[];circles.forEach(c=>map.removeLayer(c));circles=[];if(currentCityMarker){map.removeLayer(currentCityMarker);currentCityMarker=null;}}
+    function validate() {
+        let errors = 0;
+        for(let y=0; y<SIZE; y++) {
+            for(let x=0; x<SIZE; x++) {
+                ['N','S','W','E'].forEach(d => {
+                    const real = maze[y][x][d];
+                    const user = document.getElementById(`w-${x}-${y}-${d}`).classList.contains('wall-active');
+                    if(real !== user) errors++;
+                });
+            }
+        }
+        if(errors === 0) {
+            clearInterval(timerInterval);
+            document.getElementById('msg').innerHTML = "<span style='color:var(--neon-blue)'>COMPLETE! 挑戰成功</span>";
+            document.getElementById('submit-btn').classList.add('hidden');
+        } else {
+            document.getElementById('msg').innerText = `核對失敗：還有 ${errors} 處差異，請繼續！`;
+        }
+    }
 
-    function endGame(){started=false;clearInterval(timerInterval);cityTitle.style.display='none';const stats=document.getElementById('stats');const resultTitle=document.getElementById('resultTitle');if(isGameOver){resultTitle.textContent="Eliminated!";resultTitle.style.color="#ef4444";stats.innerHTML=`You failed at <b>${deathCity}</b>.<br><br>Final Score: <b>${score}</b><br>Total Time: <b>${timeEl.textContent}</b>`;}else{resultTitle.textContent="Survivor!";resultTitle.style.color="#22c55e";stats.innerHTML=`You completed the Russian challenge!<br><br>Final Score: <b>${score}</b><br>Total Time: <b>${timeEl.textContent}</b>`;}endModal.style.display='flex';}
+    window.onkeydown = (e) => {
+        if(document.getElementById('local-panel').style.display === 'block') {
+            const k = e.key.toLowerCase();
+            const w = maze[player.y][player.x];
+            if(k==='w' && !w.N) player.y--;
+            if(k==='s' && !w.S) player.y++;
+            if(k==='a' && !w.W) player.x--;
+            if(k==='d' && !w.E) player.x++;
+            updateSensors();
+            // 視覺回饋
+            const keyMap = {w:'s-n', s:'s-s', a:'s-w', d:'s-e'};
+            if(keyMap[k]) {
+                const el = document.getElementById(keyMap[k]);
+                el.style.transform = "scale(1.2)";
+                setTimeout(() => el.style.transform = "scale(1)", 100);
+            }
+        }
+    };
 
-    document.getElementById('startBtn').addEventListener('click',startGame);
-    document.getElementById('playAgainBtn').addEventListener('click',resetGame);
-    resetGame();
-  </script>
+    initMaze();
+</script>
 </body>
 </html>

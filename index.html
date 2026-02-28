@@ -3,30 +3,29 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BRAIN IDOL: LABYRINTH WALKER PRO UX</title>
+    <title>BRAIN IDOL: LABYRINTH WALKER</title>
     <style>
         :root {
-            --neon-blue: #00f2ff; /* 外牆藍色：固定 */
-            --neon-pink: #ff2e63; /* 內牆粉色：可操作 */
-            --neon-green: #0f9; /* 起點綠色 */
-            --bg-dark: #000000;
-            --grid-line: #1a1a1a; /* 網格線顏色 */
-            --wall-thickness: 4px; /* 精確的單層牆壁厚度 */
-            --hotspot-size: 16px; /* 擴大的滑鼠點擊判定範圍 */
+            --neon-blue: #00f2ff;
+            --neon-pink: #ff2e63;
+            --neon-green: #0f9;
+            --bg-dark: #050505;
+            --grid-line: #1a1a1a;
+            --wall-width: 4px;
         }
         body {
             background-color: var(--bg-dark);
             color: white;
-            font-family: 'Segoe UI', Roboto, sans-serif;
+            font-family: 'PingFang TC', sans-serif;
             display: flex;
             flex-direction: column;
             align-items: center;
             margin: 0;
-            overflow: hidden;
+            user-select: none;
         }
         .header {
             width: 100%;
-            padding: 10px;
+            padding: 20px;
             text-align: center;
             border-bottom: 1px solid #222;
         }
@@ -34,7 +33,7 @@
             font-size: 50px;
             font-weight: 800;
             color: var(--neon-blue);
-            text-shadow: 0 0 15px var(--neon-blue);
+            text-shadow: 0 0 10px var(--neon-blue);
             font-family: 'Courier New', monospace;
         }
         
@@ -42,121 +41,92 @@
         .maze-container {
             position: relative;
             margin: 20px;
-            padding: 2px;
             background: #000;
-            display: flex;
-            align-items: center;
-            justify-content: center;
         }
         .maze-grid {
             display: grid;
             gap: 0;
-            background: #000;
-            box-shadow: inset 0 0 0 1px var(--grid-line);
+            border: var(--wall-width) solid var(--neon-blue);
+            box-shadow: 0 0 15px var(--neon-blue);
         }
         .cell {
             position: relative;
+            width: 60px;
+            height: 60px;
             box-sizing: border-box;
             background: #000;
-            outline: 1px solid var(--grid-line);
-            outline-offset: -1px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: bold;
-            color: #333;
+            border: 0.5px solid var(--grid-line);
         }
 
-        /* 🟢 起點標示：淡淡的綠色 */
-        .start-node {
-            background: rgba(0, 255, 153, 0.04) !important;
-            color: var(--neon-green) !important;
-            text-shadow: 0 0 8px var(--neon-green);
-            outline: 1px solid rgba(0, 255, 153, 0.3) !important;
+        /* 🟢 起點標示 */
+        .start-cell {
+            background: rgba(0, 255, 153, 0.05) !important;
+            box-shadow: inset 0 0 10px rgba(0, 255, 153, 0.2);
         }
-        
-        /* 內部牆壁：單層、粉色、與節點完美接合 */
-        .draw-wall { 
-            position: absolute; 
-            z-index: 10; 
-            background: rgba(255,255,255,0.01); /* 未點亮時隱約可見 */
-            transition: background 0.1s, box-shadow 0.1s;
-        }
-        
-        /* 水平牆（北/南）*/
-        .draw-h { 
-            width: calc(100% + var(--wall-thickness)); 
-            height: var(--wall-thickness); 
-            left: calc(var(--wall-thickness) / -2); 
-        }
-        /* 垂直牆（西/東）*/
-        .draw-v { 
-            height: calc(100% + var(--wall-thickness)); 
-            width: var(--wall-thickness); 
-            top: calc(var(--wall-thickness) / -2);
-        }
-
-        /* 當牆被點亮（ wall-active） */
-        .wall-active { 
-            background: var(--neon-pink) !important; 
-            box-shadow: 0 0 12px var(--neon-pink); 
-        }
-
-        /* 關鍵：完美接合視覺邏輯 */
-        .wall-active::before, .wall-active::after {
-            content: '';
+        .start-text {
             position: absolute;
-            width: var(--wall-thickness);
-            height: var(--wall-thickness);
-            background: var(--neon-pink);
-            box-shadow: 0 0 12px var(--neon-pink);
+            font-size: 10px;
+            color: var(--neon-green);
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            opacity: 0.6;
         }
-        .draw-h.wall-active::before { left: 0; }
-        .draw-h.wall-active::after { right: 0; }
-        .draw-v.wall-active::before { top: 0; }
-        .draw-v.wall-active::after { bottom: 0; }
 
-        /* 鎖定固定牆（藍色鎖定）*/
-        .draw-wall.locked { 
-            background: var(--neon-blue) !important; 
-            box-shadow: 0 0 10px var(--neon-blue) !important;
-            cursor: not-allowed;
-            pointer-events: none; 
+        /* 內部可交互牆壁 */
+        .wall-trigger {
+            position: absolute;
+            z-index: 10;
+            transition: 0.2s;
+            cursor: pointer;
         }
-        .locked::before, .locked::after { background: var(--neon-blue) !important; box-shadow: 0 0 10px var(--neon-blue) !important; }
+        /* 水平牆熱區 */
+        .h-wall {
+            width: 100%;
+            height: 12px;
+            left: 0;
+        }
+        /* 垂直牆熱區 */
+        .v-wall {
+            width: 12px;
+            height: 100%;
+            top: 0;
+        }
 
-        /* 滑鼠懸停智慧亮起 (Proximity Glow) */
-        /* 當牆壁未被點亮且滑鼠懸停時，微微粉色亮起（比之前更亮）*/
-        .draw-wall:not(.locked):hover { 
-            background: rgba(255, 46, 99, 0.45) !important; 
-            box-shadow: 0 0 10px rgba(255, 46, 99, 0.6) !important;
+        /* 牆壁點亮狀態 */
+        .wall-active {
+            background: var(--neon-pink) !important;
+            box-shadow: 0 0 8px var(--neon-pink);
+        }
+        /* 懸停預覽 */
+        .wall-trigger:hover:not(.wall-active) {
+            background: rgba(255, 46, 99, 0.4);
         }
 
         /* 探索感應器 */
         #local-panel {
             display: none;
-            width: 300px;
-            background: #0d0d0d;
-            border: 2px solid var(--neon-blue);
-            padding: 15px;
-            border-radius: 8px;
+            width: 280px;
+            background: #111;
+            border: 1px solid var(--neon-blue);
+            padding: 20px;
+            border-radius: 10px;
             text-align: center;
         }
         .sensor-display {
             display: grid;
             grid-template-areas: ". up ." "left mid right" ". down .";
-            gap: 15px;
+            gap: 10px;
             justify-content: center;
             margin: 15px 0;
         }
         .sensor {
-            width: 55px;
-            height: 55px;
+            width: 50px;
+            height: 50px;
             border: 1px solid #333;
             display: flex;
             align-items: center;
             justify-content: center;
-            border-radius: 4px;
+            border-radius: 5px;
             color: #444;
         }
         .sensor.active {
@@ -166,20 +136,37 @@
             border: none;
         }
 
+        /* 控制項 */
+        .menu-card {
+            background: #111;
+            padding: 20px;
+            border-radius: 10px;
+            border: 1px solid #333;
+            margin-top: 20px;
+            text-align: center;
+        }
         button {
             background: transparent;
             border: 1px solid var(--neon-blue);
             color: var(--neon-blue);
             padding: 10px 25px;
-            font-size: 15px;
+            font-size: 16px;
             cursor: pointer;
             text-transform: uppercase;
-            letter-spacing: 2px;
-            transition: 0.2s;
+            letter-spacing: 1px;
+            margin: 5px;
         }
-        button:hover { background: rgba(0, 242, 255, 0.1); box-shadow: 0 0 15px var(--neon-blue); }
+        button:hover { background: var(--neon-blue); color: #000; }
+        
+        .switch-container {
+            margin: 15px 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
 
-        #msg { height: 35px; margin: 10px; font-size: 18px; color: white; font-weight: bold; }
+        #msg { height: 30px; margin: 15px; color: white; font-weight: bold; }
         .hidden { display: none !important; }
     </style>
 </head>
@@ -187,20 +174,11 @@
 
 <div class="header">
     <div id="timer">00:00.00</div>
-    <div style="margin-top:5px; font-size:12px; color:#666;">
-        難度：
-        <select id="size-select" style="background:#000; color:white; border:1px solid var(--neon-blue);">
-            <option value="5">5x5</option>
-            <option value="7">7x7</option>
-            <option value="10">10x10</option>
-        </select>
-    </div>
 </div>
 
-<div id="msg">【模式：無盡黑暗】點擊按鈕，開始黑暗探索</div>
+<div id="msg">等待挑戰開始...</div>
 
 <div id="maze-display-container" class="maze-container hidden">
-    <div id="outer-walls"></div>
     <div id="maze-grid" class="maze-grid"></div>
 </div>
 
@@ -212,122 +190,124 @@
         <div id="s-e" class="sensor" style="grid-area: right;">D</div>
         <div id="s-s" class="sensor" style="grid-area: down;">S</div>
     </div>
-    <button onclick="startDrawing()" style="border-color: var(--neon-pink); color: var(--neon-pink);">進入作答區</button>
+    <button onclick="goToDraw()" style="border-color: var(--neon-pink); color: var(--neon-pink);">進入作答區</button>
 </div>
 
-<div id="controls">
-    <button id="start-btn" onclick="startVoidExploration()">開始盲走探索</button>
-    <button id="submit-btn" class="hidden" onclick="validate()">提交核對</button>
-    <button onclick="location.reload()" style="border-color:#444; color:#444">刷新地圖</button>
+<div id="setup-menu" class="menu-card">
+    <div style="margin-bottom: 10px;">難度：
+        <select id="size-select" style="background:#000; color:white; border:1px solid #444;">
+            <option value="5">5x5 (新手)</option>
+            <option value="7">7x7 (進階)</option>
+            <option value="10">10x10 (大師)</option>
+        </select>
+    </div>
+    <div class="switch-container">
+        <label>顯示剩餘錯誤數：</label>
+        <input type="checkbox" id="show-errors-toggle" checked>
+    </div>
+    <button onclick="startBlindChallenge()">開始盲走挑戰</button>
+</div>
+
+<div id="action-controls" class="hidden">
+    <button id="submit-btn" onclick="checkResult()">提交地圖</button>
+    <button onclick="location.reload()" style="border-color:#444; color:#444">放棄重啟</button>
 </div>
 
 <script>
     let SIZE = 5;
-    const CELL_SIZE = 60; // 方塊大小
-    const THICKNESS = 4; // 牆壁厚度
-    const HOTSPOT_SIZE = 16; // 滑鼠點擊判定範圍 (比牆壁厚度大)
-    let maze = [];
+    let mazeData = [];
     let player = {x: 0, y: 0};
     let startTime, timerInterval;
 
-    function initMazeData() {
+    // 1. 生成迷宮數據
+    function generateMaze() {
         SIZE = parseInt(document.getElementById('size-select').value);
-        maze = Array(SIZE).fill().map(() => Array(SIZE).fill().map(() => ({N:true, S:true, W:true, E:true, v:false})));
+        let grid = Array(SIZE).fill().map(() => Array(SIZE).fill().map(() => ({N:true, S:true, W:true, E:true, v:false})));
         let stack = [[0,0]];
-        maze[0][0].v = true;
+        grid[0][0].v = true;
         while(stack.length > 0) {
-            let [x, y] = stack[stack.length-1];
-            let adj = [];
-            if(y > 0 && !maze[y-1][x].v) adj.push(['N', x, y-1]);
-            if(y < SIZE-1 && !maze[y+1][x].v) adj.push(['S', x, y+1]);
-            if(x > 0 && !maze[y][x-1].v) adj.push(['W', x-1, y]);
-            if(x < SIZE-1 && !maze[y][x+1].v) adj.push(['E', x+1, y]);
-            if(adj.length > 0) {
-                let [d, nx, ny] = adj[Math.floor(Math.random()*adj.length)];
-                maze[y][x][d] = false;
-                maze[ny][nx][d === 'N' ? 'S' : d === 'S' ? 'N' : d === 'W' ? 'E' : 'W'] = false;
-                maze[ny][nx].v = true;
+            let [cx, cy] = stack[stack.length-1];
+            let adjs = [];
+            if(cy > 0 && !grid[cy-1][cx].v) adjs.push(['N', cx, cy-1]);
+            if(cy < SIZE-1 && !grid[cy+1][cx].v) adjs.push(['S', cx, cy+1]);
+            if(cx > 0 && !grid[cy][cx-1].v) adjs.push(['W', cx-1, cy]);
+            if(cx < SIZE-1 && !grid[cy][cx+1].v) adjs.push(['E', cx+1, cy]);
+            
+            if(adjs.length > 0) {
+                let [dir, nx, ny] = adjs[Math.floor(Math.random()*adjs.length)];
+                grid[cy][cx][dir] = false;
+                grid[ny][nx][dir==='N'?'S':dir==='S'?'N':dir==='W'?'E':'W'] = false;
+                grid[ny][nx].v = true;
                 stack.push([nx, ny]);
             } else stack.pop();
         }
+        return grid;
     }
 
-    function startVoidExploration() {
-        document.getElementById('start-btn').classList.add('hidden');
+    // 2. 開始遊戲
+    function startBlindChallenge() {
+        mazeData = generateMaze();
+        document.getElementById('setup-menu').classList.add('hidden');
         document.getElementById('local-panel').style.display = 'block';
-        document.getElementById('msg').innerText = "探索中... 完全依靠感應器！";
+        document.getElementById('msg').innerText = "探索中... 使用 WASD 移動";
         startTime = Date.now();
         timerInterval = setInterval(updateTimer, 30);
         updateSensors();
     }
 
-    // 渲染作答區 - 視覺與交互優化
-    function renderDrawingMode() {
+    function updateTimer() {
+        let diff = Date.now() - startTime;
+        let m = Math.floor(diff/60000).toString().padStart(2,'0');
+        let s = Math.floor((diff%60000)/1000).toString().padStart(2,'0');
+        let ms = Math.floor((diff%1000)/10).toString().padStart(2,'0');
+        document.getElementById('timer').innerText = `${m}:${s}.${ms}`;
+    }
+
+    function updateSensors() {
+        let w = mazeData[player.y][player.x];
+        document.getElementById('s-n').className = 'sensor ' + (!w.N ? 'active' : '');
+        document.getElementById('s-s').className = 'sensor ' + (!w.S ? 'active' : '');
+        document.getElementById('s-w').className = 'sensor ' + (!w.W ? 'active' : '');
+        document.getElementById('s-e').className = 'sensor ' + (!w.E ? 'active' : '');
+    }
+
+    // 3. 進入作答區
+    function goToDraw() {
+        document.getElementById('local-panel').style.display = 'none';
+        document.getElementById('maze-display-container').classList.remove('hidden');
+        document.getElementById('action-controls').classList.remove('hidden');
+        document.getElementById('msg').innerText = "請根據記憶還原牆壁（點擊方格邊緣）";
+        renderDrawGrid();
+    }
+
+    function renderDrawGrid() {
         const grid = document.getElementById('maze-grid');
-        grid.style.gridTemplateColumns = `repeat(${SIZE}, ${CELL_SIZE}px)`;
+        grid.style.gridTemplateColumns = `repeat(${SIZE}, 60px)`;
         grid.innerHTML = '';
         
         for(let y=0; y<SIZE; y++) {
             for(let x=0; x<SIZE; x++) {
                 const cell = document.createElement('div');
                 cell.className = 'cell';
-                cell.style.width = `${CELL_SIZE}px`; cell.style.height = `${CELL_SIZE}px`;
-                
-                // 🟢 起點標示
                 if(x===0 && y===0) {
-                    cell.classList.add('start-node');
-                    cell.innerHTML = "<small>START</small>";
+                    cell.classList.add('start-cell');
+                    cell.innerHTML = '<span class="start-text">START</span>';
                 }
 
-                // 生成作答牆壁熱區 (北和西，南和東為外牆)
-                const wallsToCreate = [];
-                if(y >= 0) wallsToCreate.push('N');
-                if(x >= 0) wallsToCreate.push('W');
-                if(y === SIZE-1) wallsToCreate.push('S');
-                if(x === SIZE-1) wallsToCreate.push('E');
-
-                wallsToCreate.forEach(d => {
+                // 只渲染「北」和「西」的牆壁觸發器（避免雙重渲染）
+                // 除非是最後一行或最後一列的外牆
+                let dirs = [];
+                if(y > 0) dirs.push('N');
+                if(x > 0) dirs.push('W');
+                
+                dirs.forEach(d => {
                     const w = document.createElement('div');
                     w.id = `w-${x}-${y}-${d}`;
-                    w.className = 'draw-wall';
+                    w.className = `wall-trigger ${d==='N'?'h-wall':'v-wall'}`;
+                    if(d==='N') w.style.top = "-6px";
+                    else w.style.left = "-6px";
                     
-                    // 根據北/西、南/東設定 CSS 樣式 (水平/垂直)
-                    if(d === 'N' || d === 'S') {
-                        w.classList.add('draw-h'); // 水平
-                        if(d === 'N') w.style.top = `calc(${THICKNESS}px / -2)`;
-                        else w.style.bottom = `calc(${THICKNESS}px / -2)`;
-                        
-                        // 🟢 優化點擊 Hitbox (水平)
-                        // 我們讓隱形的點擊區域變得比牆壁厚度大，使其更容易點擊
-                        w.style.height = `${HOTSPOT_SIZE}px`;
-                        // 調整樣式以居中顯示單層細線
-                        w.style.borderTop = `${(HOTSPOT_SIZE - THICKNESS)/2}px solid transparent`;
-                        w.style.borderBottom = `${(HOTSPOT_SIZE - THICKNESS)/2}px solid transparent`;
-                        w.style.backgroundClip = 'content-box'; // 重要：讓背景顏色只填滿中間的 THICKNESS
-
-                    } else {
-                        w.classList.add('draw-v'); // 垂直
-                        if(d === 'W') w.style.left = `calc(${THICKNESS}px / -2)`;
-                        else w.style.right = `calc(${THICKNESS}px / -2)`;
-
-                        // 🟢 優化點擊 Hitbox (垂直)
-                        w.style.width = `${HOTSPOT_SIZE}px`;
-                        w.style.borderLeft = `${(HOTSPOT_SIZE - THICKNESS)/2}px solid transparent`;
-                        w.style.borderRight = `${(HOTSPOT_SIZE - THICKNESS)/2}px solid transparent`;
-                        w.style.backgroundClip = 'content-box';
-                    }
-
-                    // 判定是否為固定外牆（藍色鎖定）
-                    if( (y===0 && d==='N') || (y===SIZE-1 && d==='S') || (x===0 && d==='W') || (x===SIZE-1 && d==='E') ) {
-                        w.classList.add('wall-active', 'locked');
-                        w.style.backgroundClip = 'content-box'; // 外牆也需要保持 THICKNESS
-                    } else {
-                        // 內部粉色牆壁，可點擊
-                        w.onclick = (e) => {
-                            e.stopPropagation(); // 防止冒泡
-                            w.classList.toggle('wall-active');
-                        };
-                    }
+                    w.onclick = () => w.classList.toggle('wall-active');
                     cell.appendChild(w);
                 });
                 grid.appendChild(cell);
@@ -335,62 +315,43 @@
         }
     }
 
-    // 流程邏輯
-    function updateTimer() {
-        const diff = Date.now() - startTime;
-        const m = Math.floor(diff/60000).toString().padStart(2,'0');
-        const s = Math.floor((diff%60000)/1000).toString().padStart(2,'0');
-        const ms = Math.floor((diff%1000)/10).toString().padStart(2,'0');
-        document.getElementById('timer').innerText = `${m}:${s}.${ms}`;
-    }
-
-    function updateSensors() {
-        const w = maze[player.y][player.x];
-        const setS = (id, hasPath) => {
-            const el = document.getElementById(id);
-            if(hasPath) el.classList.add('active');
-            else el.classList.remove('active');
-        };
-        setS('s-n', !w.N); setS('s-s', !w.S); setS('s-w', !w.W); setS('s-e', !w.E);
-    }
-
-    function startDrawing() {
-        document.getElementById('local-panel').style.display = 'none';
-        document.getElementById('maze-display-container').classList.remove('hidden');
-        document.getElementById('submit-btn').classList.remove('hidden');
-        document.getElementById('msg').innerText = "【模式：地圖還原】憑記憶畫出結構（藍色固定，粉色可點擊）";
-        renderDrawingMode();
-    }
-
-    function validate() {
+    // 4. 核對結果
+    function checkResult() {
         let errors = 0;
-        // 只核對內部粉色牆壁
         for(let y=0; y<SIZE; y++) {
             for(let x=0; x<SIZE; x++) {
-                ['N','W'].forEach(d => {
-                    if( (y===0 && d==='N') || (x===0 && d==='W') ) return;
-                    const real = maze[y][x][d];
-                    const el = document.getElementById(`w-${x}-${y}-${d}`);
-                    const user = el.classList.contains('wall-active');
+                // 核對北牆
+                if(y > 0) {
+                    const real = mazeData[y][x].N;
+                    const user = document.getElementById(`w-${x}-${y}-N`).classList.contains('wall-active');
                     if(real !== user) errors++;
-                });
+                }
+                // 核對西牆
+                if(x > 0) {
+                    const real = mazeData[y][x].W;
+                    const user = document.getElementById(`w-${x}-${y}-W`).classList.contains('wall-active');
+                    if(real !== user) errors++;
+                }
             }
         }
-        
-        const msgEl = document.getElementById('msg');
+
+        const showCount = document.getElementById('show-errors-toggle').checked;
         if(errors === 0) {
             clearInterval(timerInterval);
-            msgEl.innerHTML = "<span style='color:var(--neon-blue)'>🏆 PERFECT! 完美還原</span>";
+            document.getElementById('msg').innerHTML = "<span style='color:var(--neon-blue)'>🏆 完美還原！挑戰成功！</span>";
             document.getElementById('submit-btn').classList.add('hidden');
         } else {
-            msgEl.innerHTML = `<span style='color:var(--neon-pink)'> 核對失敗：還有 ${errors} 處錯誤，請繼續！</span>`;
+            document.getElementById('msg').innerHTML = showCount ? 
+                `<span style='color:var(--neon-pink)'>核對失敗：還有 ${errors} 處錯誤。</span>` :
+                `<span style='color:var(--neon-pink)'>核對失敗：地圖仍有誤，請繼續嘗試。</span>`;
         }
     }
 
+    // 鍵盤移動
     window.onkeydown = (e) => {
         if(document.getElementById('local-panel').style.display === 'block') {
-            const k = e.key.toLowerCase();
-            const w = maze[player.y][player.x];
+            let k = e.key.toLowerCase();
+            let w = mazeData[player.y][player.x];
             if(k==='w' && !w.N) player.y--;
             if(k==='s' && !w.S) player.y++;
             if(k==='a' && !w.W) player.x--;
@@ -398,8 +359,6 @@
             updateSensors();
         }
     };
-
-    initMazeData();
 </script>
 </body>
 </html>
